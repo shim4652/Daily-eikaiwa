@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>デイリー英会話</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #16202B;
+    --bg-elevated: #1F2E3B;
+    --card: #223442;
+    --card-hi: #2A3F4E;
+    --line: #33495A;
+    --accent-a: #E8A33D;   /* 相手のセリフ */
+    --accent-b: #6FA8A0;   /* ユーザーの選択肢 */
+    --correct: #7FB77E;
+    --incorrect: #D96C6C;
+    --text: #F2ECDF;
+    --text-muted: #9FB0BD;
+    --font-display: 'Bricolage Grotesque', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100dvh;
+    background:
+      radial-gradient(ellipse at top left, #1B2934 0%, var(--bg) 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    display:flex;
+    flex-direction:column;
+    overflow-x:hidden;
+  }
+  .app{
+    width:100%;
+    max-width:560px;
+    margin:0 auto;
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    padding: clamp(12px,3vw,20px);
+    padding-bottom: max(clamp(12px,3vw,20px), env(safe-area-inset-bottom));
+  }
+
+  /* ---------- header ---------- */
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:8px;
+    padding: clamp(6px,2vw,10px) 4px clamp(14px,3vw,18px);
+    border-bottom:1px solid var(--line);
+    margin-bottom: clamp(14px,3vw,20px);
+  }
+  .brand{display:flex; flex-direction:column; gap:2px;}
+  .brand .wave{
+    font-family:var(--font-mono);
+    font-size:clamp(10px,2.6vw,12px);
+    letter-spacing:.14em;
+    color:var(--accent-a);
+    text-transform:uppercase;
+  }
+  h1{
+    margin:0;
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:clamp(22px,6vw,30px);
+    letter-spacing:-0.01em;
+  }
+  .streak{
+    font-family:var(--font-mono);
+    font-size:clamp(11px,2.8vw,13px);
+    color:var(--text-muted);
+    text-align:right;
+    line-height:1.4;
+  }
+  .streak b{color:var(--accent-b); font-size:1.15em;}
+
+  main{flex:1; display:flex; flex-direction:column; min-height:0;}
+
+  /* ---------- scenario list ---------- */
+  .intro-copy{
+    font-size:clamp(13px,3.2vw,15px);
+    color:var(--text-muted);
+    margin: 0 4px clamp(16px,4vw,22px);
+    line-height:1.6;
+  }
+  .scenario-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:clamp(10px,2.6vw,14px);
+  }
+  .scenario-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:clamp(14px,3.6vw,18px) clamp(12px,3.2vw,16px);
+    text-align:left;
+    cursor:pointer;
+    color:var(--text);
+    font-family:var(--font-body);
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  .scenario-card:active{transform:scale(0.97);}
+  .scenario-card:hover{border-color:var(--accent-a); background:var(--card-hi);}
+  .scenario-card .emoji{font-size:clamp(22px,6vw,28px);}
+  .scenario-card .name{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:clamp(14px,3.6vw,16px);
+    line-height:1.25;
+  }
+  .scenario-card .meta{
+    font-family:var(--font-mono);
+    font-size:clamp(10px,2.6vw,11px);
+    color:var(--text-muted);
+  }
+  .scenario-card .best{
+    font-family:var(--font-mono);
+    font-size:clamp(10px,2.6vw,11px);
+    color:var(--correct);
+  }
+
+  /* ---------- quiz view ---------- */
+  .quiz-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:clamp(14px,3.5vw,18px);
+  }
+  .back-btn{
+    background:none; border:none; color:var(--text-muted);
+    font-family:var(--font-mono); font-size:clamp(12px,3vw,13px);
+    cursor:pointer; padding:6px 0; display:flex; align-items:center; gap:6px;
+  }
+  .back-btn:hover{color:var(--text);}
+  .scenario-title{
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:clamp(16px,4.2vw,19px);
+  }
+
+  /* spine progress */
+  .spine{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-bottom:clamp(18px,4.5vw,26px);
+  }
+  .spine .seg{
+    flex:1;
+    height:4px;
+    border-radius:3px;
+    background:var(--line);
+    overflow:hidden;
+  }
+  .spine .seg i{
+    display:block; height:100%; width:0%;
+    background:var(--accent-a);
+    transition:width .25s ease;
+  }
+  .spine .seg.done i{width:100%; background:var(--correct);}
+  .spine .seg.wrong i{width:100%; background:var(--incorrect);}
+  .spine .seg.active i{width:100%;}
+
+  /* dialogue bubble */
+  .turn-label{
+    font-family:var(--font-mono);
+    font-size:clamp(10px,2.6vw,11px);
+    color:var(--text-muted);
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  .bubble{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-left:3px solid var(--accent-a);
+    border-radius:4px 14px 14px 14px;
+    padding:clamp(14px,3.6vw,18px);
+    margin-bottom:clamp(16px,4vw,22px);
+  }
+  .bubble-top{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;
+  }
+  .speaker{
+    font-family:var(--font-mono);
+    font-size:clamp(11px,2.8vw,12px);
+    color:var(--accent-a);
+  }
+  .speak-btn{
+    width:38px; height:38px; border-radius:50%;
+    border:1px solid var(--line);
+    background:var(--bg-elevated);
+    color:var(--accent-a);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0;
+    font-size:16px;
+    position:relative;
+  }
+  .speak-btn.speaking{
+    animation: pulse 0.9s ease-in-out infinite;
+    border-color:var(--accent-a);
+  }
+  @keyframes pulse{
+    0%,100%{ box-shadow:0 0 0 0 rgba(232,163,61,.35); }
+    50%{ box-shadow:0 0 0 8px rgba(232,163,61,0); }
+  }
+  .en-line{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:clamp(16px,4.4vw,19px);
+    line-height:1.4;
+    margin:0 0 10px;
+  }
+  .ja-toggle{
+    background:none; border:none; color:var(--text-muted);
+    font-family:var(--font-mono); font-size:clamp(11px,2.8vw,12px);
+    cursor:pointer; padding:2px 0; text-decoration:underline; text-underline-offset:3px;
+  }
+  .ja-line{
+    font-size:clamp(13px,3.2vw,14px);
+    color:var(--text-muted);
+    margin-top:8px;
+    line-height:1.5;
+    display:none;
+  }
+  .ja-line.show{display:block;}
+
+  .prompt-label{
+    font-family:var(--font-mono);
+    font-size:clamp(10px,2.6vw,11px);
+    color:var(--text-muted);
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    margin: 4px 0 10px;
+  }
+  .options{display:flex; flex-direction:column; gap:10px;}
+  .option{
+    text-align:left;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:clamp(12px,3.2vw,15px) clamp(14px,3.6vw,16px);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:clamp(14px,3.6vw,15.5px);
+    line-height:1.4;
+    cursor:pointer;
+    transition: border-color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .option:active{transform:scale(0.985);}
+  .option:not(:disabled):hover{border-color:var(--accent-b);}
+  .option.correct{
+    border-color:var(--correct);
+    background: rgba(127,183,126,0.12);
+  }
+  .option.incorrect{
+    border-color:var(--incorrect);
+    background: rgba(217,108,108,0.12);
+  }
+  .option:disabled{cursor:default;}
+  .option:disabled:not(.correct):not(.incorrect){opacity:.45;}
+
+  .feedback{
+    margin-top:clamp(14px,3.6vw,18px);
+    padding:clamp(12px,3.2vw,15px);
+    border-radius:12px;
+    font-size:clamp(13px,3.2vw,14px);
+    line-height:1.6;
+    display:none;
+    animation: fadein .2s ease;
+  }
+  @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+  .feedback.show{display:block;}
+  .feedback.ok{background:rgba(127,183,126,.1); border:1px solid rgba(127,183,126,.35); color:var(--correct);}
+  .feedback.ng{background:rgba(217,108,108,.1); border:1px solid rgba(217,108,108,.35); color:#f0a3a3;}
+  .feedback .explain{color:var(--text); margin-top:6px; display:block;}
+  .feedback-top{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .speak-btn.small{
+    width:30px; height:30px; font-size:13px; flex-shrink:0;
+    border-color: currentColor;
+  }
+
+  .practice-box{
+    margin-top:clamp(12px,3vw,16px);
+    padding-top:clamp(12px,3vw,16px);
+    border-top:1px dashed var(--line);
+  }
+  .mic-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%;
+    padding:clamp(11px,2.8vw,13px);
+    border-radius:12px;
+    border:1px solid var(--accent-b);
+    background:transparent;
+    color:var(--accent-b);
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:clamp(13px,3.3vw,14.5px);
+    cursor:pointer;
+    transition: background .15s ease, color .15s ease;
+  }
+  .mic-btn:active{transform:scale(0.98);}
+  .mic-btn.listening{
+    background:var(--accent-b);
+    color:#0F1B22;
+    animation: pulse-b 0.9s ease-in-out infinite;
+  }
+  .mic-btn.unsupported{
+    opacity:.45; cursor:default; border-color:var(--line); color:var(--text-muted);
+  }
+  @keyframes pulse-b{
+    0%,100%{ box-shadow:0 0 0 0 rgba(111,168,160,.4); }
+    50%{ box-shadow:0 0 0 9px rgba(111,168,160,0); }
+  }
+  .practice-result{
+    margin-top:10px;
+    font-size:clamp(12.5px,3.2vw,13.5px);
+    line-height:1.6;
+    color:var(--text-muted);
+    display:none;
+  }
+  .practice-result.show{display:block;}
+  .practice-result .heard{
+    font-family:var(--font-mono);
+    color:var(--text);
+    display:block;
+    margin-top:4px;
+  }
+  .practice-result.great{color:var(--correct);}
+  .practice-result.okay{color:var(--accent-a);}
+  .practice-result.retry{color:var(--incorrect);}
+
+  .next-btn{
+    margin-top:clamp(14px,3.6vw,18px);
+    width:100%;
+    padding:clamp(13px,3.4vw,15px);
+    border-radius:12px;
+    border:none;
+    background:var(--accent-b);
+    color:#0F1B22;
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:clamp(14px,3.6vw,15.5px);
+    cursor:pointer;
+    display:none;
+  }
+  .next-btn.show{display:block;}
+  .next-btn:active{opacity:.85;}
+
+  /* ---------- result view ---------- */
+  .result{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    justify-content:center;
+    flex:1;
+    gap:14px;
+    padding: 10px;
+  }
+  .result .big-emoji{font-size:clamp(40px,12vw,56px);}
+  .result h2{
+    font-family:var(--font-display);
+    font-size:clamp(20px,5.2vw,26px);
+    margin:0;
+  }
+  .result .score{
+    font-family:var(--font-mono);
+    font-size:clamp(30px,9vw,42px);
+    color:var(--accent-b);
+  }
+  .result p{color:var(--text-muted); font-size:clamp(13px,3.2vw,14px); max-width:320px; line-height:1.6; margin:0;}
+  .result-actions{display:flex; gap:10px; margin-top:10px; width:100%; max-width:320px;}
+  .result-actions button{
+    flex:1;
+    padding:clamp(12px,3.2vw,14px);
+    border-radius:12px;
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:clamp(13px,3.4vw,14.5px);
+    cursor:pointer;
+    border:1px solid var(--line);
+  }
+  .retry-btn{background:var(--accent-a); color:#20160B; border:none;}
+  .list-btn{background:transparent; color:var(--text);}
+
+  .hidden{display:none !important;}
+
+  .credit{
+    position:fixed;
+    right:10px;
+    bottom:calc(10px + env(safe-area-inset-bottom));
+    font-family:var(--font-mono);
+    font-size:10px;
+    letter-spacing:.04em;
+    color:var(--text-muted);
+    opacity:.6;
+    pointer-events:none;
+    z-index:5;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <span class="wave">〜〜〜 SPEAK &amp; RESPOND 〜〜〜</span>
+      <h1>デイリー英会話</h1>
+    </div>
+    <div class="streak" id="streakBox">クリア<br><b id="clearedCount">0</b>/6</div>
+  </header>
+
+  <main>
+    <!-- 1) シナリオ選択画面 -->
+    <section id="listView">
+      <p class="intro-copy">場面を選んで、会話の続きとして自然な返事をタップしてください。🔊 で相手のセリフを聞くこともできます。</p>
+      <div class="scenario-grid" id="scenarioGrid"></div>
+    </section>
+
+    <!-- 2) クイズ画面 -->
+    <section id="quizView" class="hidden">
+      <div class="quiz-header">
+        <button class="back-btn" id="backBtn">← 一覧に戻る</button>
+      </div>
+      <div class="scenario-title" id="quizTitle" style="margin-bottom:14px;"></div>
+      <div class="spine" id="spine"></div>
+
+      <div class="turn-label" id="turnLabel"></div>
+      <div class="bubble">
+        <div class="bubble-top">
+          <span class="speaker" id="speakerLabel"></span>
+          <button class="speak-btn" id="speakBtn" title="発音を聞く">🔊</button>
+        </div>
+        <p class="en-line" id="enLine"></p>
+        <button class="ja-toggle" id="jaToggle">日本語訳を見る</button>
+        <p class="ja-line" id="jaLine"></p>
+      </div>
+
+      <div class="prompt-label">あなたの返事は?</div>
+      <div class="options" id="optionsBox"></div>
+
+      <div class="feedback" id="feedbackBox">
+        <div class="feedback-top">
+          <span id="feedbackHead"></span>
+          <button class="speak-btn small" id="answerSpeakBtn" title="正解の発音を聞く">🔊</button>
+        </div>
+        <span class="explain" id="feedbackExplain"></span>
+
+        <div class="practice-box" id="practiceBox">
+          <button class="mic-btn" id="micBtn">🎤 発音を練習する</button>
+          <div class="practice-result" id="practiceResult"></div>
+        </div>
+      </div>
+
+      <button class="next-btn" id="nextBtn">次へ →</button>
+    </section>
+
+    <!-- 3) 結果画面 -->
+    <section id="resultView" class="hidden">
+      <div class="result">
+        <div class="big-emoji" id="resultEmoji">🎉</div>
+        <h2 id="resultTitle">よくできました!</h2>
+        <div class="score" id="resultScore">5 / 5</div>
+        <p id="resultMsg">この調子で他の場面にも挑戦してみましょう。</p>
+        <div class="result-actions">
+          <button class="retry-btn" id="retryBtn">もう一度</button>
+          <button class="list-btn" id="toListBtn">一覧へ</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="credit">Produced by Shimofuri</div>
+
+<script>
+const SCENARIOS = [
+  {
+    id:"cafe", emoji:"☕️", name:"カフェで注文", speaker:"店員",
+    turns:[
+      {en:"Hi, welcome in. What can I get started for you today?", ja:"いらっしゃいませ。今日は何になさいますか?",
+       options:["I'll have a medium latte, please.","I am fine, thank you.","Nice to meet you too."], correct:0,
+       explain:"注文する時は「I'll have ~, please.」が定番の言い方です。"},
+      {en:"Sure! For here or to go?", ja:"かしこまりました!店内でお召し上がりですか、お持ち帰りですか?",
+       options:["To go, please.","I'll have a coffee.","Yes, I do."], correct:0,
+       explain:"店内か持ち帰りかを聞かれたら「For here」か「To go」で答えます。"},
+      {en:"That'll be $4.50. Will that be cash or card?", ja:"4ドル50セントになります。お支払いは現金ですか、カードですか?",
+       options:["It's over there.","Card, please.","I'm 25 years old."], correct:1,
+       explain:"支払い方法を聞かれたら「Cash」か「Card」で簡潔に答えます。"},
+      {en:"Can I get a name for the order?", ja:"お名前を伺ってもよろしいですか?",
+       options:["It's Tuesday.","It's two dollars.","It's Yuki."], correct:2,
+       explain:"注文時に名前を聞かれたら「It's ~」とシンプルに答えます。"},
+      {en:"Here you go! Have a great day.", ja:"どうぞ!良い一日を。",
+       options:["I'm sorry.","Thanks, you too!","How much is it?"], correct:1,
+       explain:"挨拶されたら「You too!」と返すのが自然です。"}
+    ]
+  },
+  {
+    id:"directions", emoji:"🧭", name:"道を尋ねる", speaker:"通行人",
+    turns:[
+      {en:"Excuse me, are you lost? Can I help you?", ja:"すみません、道に迷われましたか?お手伝いしましょうか?",
+       options:["I like trains.","No, I'm not hungry.","Yes, actually. I'm looking for the train station."], correct:2,
+       explain:"助けを申し出られたら、探している場所を具体的に伝えます。"},
+      {en:"Sure! Go straight and turn left at the second light.", ja:"もちろん!まっすぐ行って、2つ目の信号を左に曲がってください。",
+       options:["Okay, straight and then left. Got it, thank you.","I don't have any money.","See you tomorrow."], correct:0,
+       explain:"道順を確認するときは、復唱すると誤解を防げます。"},
+      {en:"It's about a five-minute walk from here.", ja:"ここから歩いて5分くらいです。",
+       options:["It's my birthday today.","Great, that's not too far.","I'll take the bus instead."], correct:1,
+       explain:"所要時間を聞いたら、簡単な相槌で応じます。"},
+      {en:"You can't miss it, the entrance is right next to a bookstore.", ja:"すぐわかりますよ、入り口は本屋のすぐ隣です。",
+       options:["What time is it now?","I don't read books.","Perfect, thanks for the detailed directions."], correct:2,
+       explain:"詳しく教えてもらったら、しっかりお礼を伝えます。"},
+      {en:"No problem. Have a good trip!", ja:"どういたしまして。良い旅を!",
+       options:["That's too expensive.","Thank you, you too. Have a nice day!","I'm not traveling."], correct:1,
+       explain:"別れ際の挨拶には、同じように返すのが自然です。"}
+    ]
+  },
+  {
+    id:"office", emoji:"💼", name:"職場の雑談", speaker:"同僚",
+    turns:[
+      {en:"Morning! How was your weekend?", ja:"おはよう!週末はどうだった?",
+       options:["It's raining outside.","Pretty good, thanks! I just relaxed at home.","I'm working on the report now."], correct:1,
+       explain:"週末について聞かれたら、簡単に感想と過ごし方を伝えます。"},
+      {en:"That sounds nice. Any big plans for this week?", ja:"それはいいね。今週は何か予定ある?",
+       options:["Not really, just the usual meetings.","I went to the beach yesterday.","Thank you for asking."], correct:0,
+       explain:"「今週の予定」を聞かれているので、未来の予定について答えます。"},
+      {en:"By the way, did you get my email about the meeting?", ja:"ところで、会議についてのメール見た?",
+       options:["It's on my desk.","No, I don't have an email address.","Yes, I saw it. I'll be there at 3."], correct:2,
+       explain:"確認を聞かれたら、はい/いいえと詳細を添えて答えます。"},
+      {en:"Great. Also, could you send me the updated file before lunch?", ja:"よかった。あと、お昼までに更新したファイルを送ってもらえる?",
+       options:["Sure, I'll send it in a few minutes.","I already ate lunch.","The file is very old."], correct:0,
+       explain:"依頼を受けたら、快く引き受ける返事をします。"},
+      {en:"Thanks, I really appreciate it.", ja:"ありがとう、本当に助かるよ。",
+       options:["See you next year.","I don't like it.","No problem, happy to help."], correct:2,
+       explain:"お礼を言われたら「No problem」や「Happy to help」と返すのが自然です。"}
+    ]
+  },
+  {
+    id:"phone", emoji:"📞", name:"電話対応", speaker:"相手",
+    turns:[
+      {en:"Hello, this is ABC Company. How can I help you?", ja:"もしもし、ABC会社です。ご用件は何でしょうか?",
+       options:["The weather is nice today.","I'm calling from home.","Hi, I'd like to speak to Mr. Tanaka, please."], correct:2,
+       explain:"電話で用件を伝えるときは、話したい相手をはっきり伝えます。"},
+      {en:"I'm sorry, he's in a meeting right now. Can I take a message?", ja:"申し訳ございません、只今会議中です。ご伝言を承りましょうか?",
+       options:["I'll come to the office now.","Yes, please tell him I called and I'll email him the details.","No, he called me first."], correct:1,
+       explain:"相手が不在の時は、伝言をお願いするのが一般的です。"},
+      {en:"Sure. Can I get your name and number, please?", ja:"かしこまりました。お名前と電話番号を教えていただけますか?",
+       options:["I don't have a phone.","It's a nice day today.","It's Yuki Sato, and my number is 090-1234-5678."], correct:2,
+       explain:"名前と電話番号を聞かれたら、はっきりと伝えます。"},
+      {en:"Got it. I'll make sure he gets the message.", ja:"承知しました。必ず伝言をお伝えします。",
+       options:["That's too bad.","Thank you very much. I appreciate it.","I'll call back never."], correct:1,
+       explain:"対応してもらったら、お礼を伝えます。"},
+      {en:"You're welcome. Have a good day!", ja:"どういたしまして。良い一日を!",
+       options:["What's your name?","I'm busy right now.","You too, goodbye!"], correct:2,
+       explain:"電話を切る前の自然な挨拶です。"}
+    ]
+  },
+  {
+    id:"shopping", emoji:"🛍️", name:"買い物", speaker:"店員",
+    turns:[
+      {en:"Hi there, let me know if you need any help finding anything.", ja:"いらっしゃいませ、何かお探しでしたらお声がけください。",
+       options:["I work here too.","Thanks, I'm actually looking for a birthday gift.","It's not my birthday."], correct:1,
+       explain:"声をかけられたら、探している物を伝えると助けてもらえます。"},
+      {en:"Sure, who is it for?", ja:"かしこまりました、どなたへのプレゼントですか?",
+       options:["It's for my mother. She likes cooking.","It's for tomorrow.","It's over there."], correct:0,
+       explain:"誰へのプレゼントか、相手の好みも伝えると提案してもらいやすくなります。"},
+      {en:"How about this apron? It's one of our best sellers.", ja:"こちらのエプロンはいかがですか?人気商品なんです。",
+       options:["I already bought one.","I don't cook at all.","That looks nice. Can I see it in a different color?"], correct:2,
+       explain:"商品を勧められたら感想を伝え、必要なら別の選択肢を聞きます。"},
+      {en:"Of course, here you go. It also comes in blue and green.", ja:"もちろんです、どうぞ。青と緑もございます。",
+       options:["It's too heavy.","I'll take the green one, please.","I don't like colors."], correct:1,
+       explain:"欲しい色やサイズを選んで伝えます。"},
+      {en:"Great choice! Will that be all for you today?", ja:"良い選択ですね!他にご入用のものはございますか?",
+       options:["I need a new car.","I don't have any money.","Yes, that's everything. Thank you."], correct:2,
+       explain:"会計を促されたら、他に必要な物があるか答えます。"}
+    ]
+  },
+  {
+    id:"catchup", emoji:"👋", name:"友人と近況報告", speaker:"友人",
+    turns:[
+      {en:"Hey! It's been so long. How have you been?", ja:"やあ!久しぶりだね。元気だった?",
+       options:["It's five o'clock.","I've been good, just busy with work. How about you?","I'm going to the store."], correct:1,
+       explain:"久しぶりに会った時は近況を簡単に伝え、相手にも聞き返します。"},
+      {en:"I've been great! I actually just got a new job.", ja:"とても元気だよ!実は新しい仕事に就いたんだ。",
+       options:["I'm sorry to hear that.","That's my job too.","Wow, congratulations! What kind of job is it?"], correct:2,
+       explain:"良い知らせを聞いたら、お祝いの言葉と質問で会話を広げます。"},
+      {en:"It's a marketing role at a tech company downtown.", ja:"都心のIT企業でマーケティングの仕事だよ。",
+       options:["Where is downtown?","That sounds exciting! How do you like it so far?","I don't like technology."], correct:1,
+       explain:"相手の話に興味を示し、質問を続けると会話が弾みます。"},
+      {en:"I love it, honestly. The team is really friendly.", ja:"正直、気に入ってるよ。チームがすごく親切なんだ。",
+       options:["I'm moving next week.","I don't have any friends.","That's great to hear. We should catch up more often."], correct:2,
+       explain:"会話を締めくくりつつ、また会う約束をする自然な流れです。"},
+      {en:"Definitely! Let's grab coffee sometime soon.", ja:"もちろん!近いうちにコーヒーでも飲もうよ。",
+       options:["Goodbye forever.","Sounds perfect. I'll text you!","I don't drink coffee."], correct:1,
+       explain:"誘いを受けたら快く同意し、次の連絡方法を伝えます。"}
+    ]
+  }
+];
+
+const state = { scenarioIdx:null, turnIdx:0, correctCount:0, answered:false, clearedIds:new Set() };
+
+const listView = document.getElementById('listView');
+const quizView = document.getElementById('quizView');
+const resultView = document.getElementById('resultView');
+const scenarioGrid = document.getElementById('scenarioGrid');
+const clearedCountEl = document.getElementById('clearedCount');
+
+function renderList(){
+  scenarioGrid.innerHTML = '';
+  SCENARIOS.forEach((sc, idx) => {
+    const card = document.createElement('button');
+    card.className = 'scenario-card';
+    const cleared = state.clearedIds.has(sc.id);
+    card.innerHTML = `
+      <div class="emoji">${sc.emoji}</div>
+      <div class="name">${sc.name}</div>
+      <div class="meta">全${sc.turns.length}ターン</div>
+      ${cleared ? `<div class="best">✓ クリア済み</div>` : ``}
+    `;
+    card.addEventListener('click', () => startScenario(idx));
+    scenarioGrid.appendChild(card);
+  });
+  clearedCountEl.textContent = state.clearedIds.size;
+}
+
+function startScenario(idx){
+  state.scenarioIdx = idx;
+  state.turnIdx = 0;
+  state.correctCount = 0;
+  state.answered = false;
+  listView.classList.add('hidden');
+  resultView.classList.add('hidden');
+  quizView.classList.remove('hidden');
+  document.getElementById('quizTitle').textContent = SCENARIOS[idx].emoji + '  ' + SCENARIOS[idx].name;
+  renderSpine();
+  renderTurn();
+}
+
+function renderSpine(){
+  const sc = SCENARIOS[state.scenarioIdx];
+  const spine = document.getElementById('spine');
+  spine.innerHTML = '';
+  sc.turns.forEach((_, i) => {
+    const seg = document.createElement('div');
+    seg.className = 'seg';
+    seg.id = 'seg-' + i;
+    seg.innerHTML = '<i></i>';
+    spine.appendChild(seg);
+  });
+}
+
+function updateSpine(){
+  for(let i=0;i<state.turnIdx;i++){
+    document.getElementById('seg-'+i).classList.add('done');
+  }
+  const cur = document.getElementById('seg-'+state.turnIdx);
+  if(cur) cur.classList.add('active');
+}
+
+function renderTurn(){
+  const sc = SCENARIOS[state.scenarioIdx];
+  const turn = sc.turns[state.turnIdx];
+  state.answered = false;
+
+  document.getElementById('turnLabel').textContent = `TURN ${state.turnIdx+1} / ${sc.turns.length}`;
+  document.getElementById('speakerLabel').textContent = sc.speaker;
+  document.getElementById('enLine').textContent = turn.en;
+  document.getElementById('jaLine').textContent = turn.ja;
+  document.getElementById('jaLine').classList.remove('show');
+  document.getElementById('jaToggle').textContent = '日本語訳を見る';
+
+  const optionsBox = document.getElementById('optionsBox');
+  optionsBox.innerHTML = '';
+  turn.options.forEach((optText, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.textContent = optText;
+    btn.addEventListener('click', () => selectOption(i));
+    optionsBox.appendChild(btn);
+  });
+
+  document.getElementById('feedbackBox').classList.remove('show','ok','ng');
+  document.getElementById('nextBtn').classList.remove('show');
+  resetPracticeBox();
+  updateSpine();
+}
+
+document.getElementById('jaToggle').addEventListener('click', () => {
+  const jaLine = document.getElementById('jaLine');
+  const toggle = document.getElementById('jaToggle');
+  const show = jaLine.classList.toggle('show');
+  toggle.textContent = show ? '日本語訳を隠す' : '日本語訳を見る';
+});
+
+let currentVoice = null;
+function pickVoice(){
+  const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  currentVoice = voices.find(v => v.lang === 'en-US') || voices.find(v => v.lang && v.lang.startsWith('en')) || null;
+}
+if('speechSynthesis' in window){
+  window.speechSynthesis.onvoiceschanged = pickVoice;
+  pickVoice();
+}
+
+function speakText(text, btn){
+  if(!('speechSynthesis' in window)) return;
+  const doSpeak = () => {
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'en-US';
+    utter.rate = 0.95;
+    if(currentVoice) utter.voice = currentVoice;
+    if(btn){
+      btn.classList.add('speaking');
+      utter.onend = () => btn.classList.remove('speaking');
+      utter.onerror = () => btn.classList.remove('speaking');
+    }
+    window.speechSynthesis.speak(utter);
+  };
+  if(window.speechSynthesis.speaking || window.speechSynthesis.pending){
+    window.speechSynthesis.cancel();
+    setTimeout(doSpeak, 60);
+  } else {
+    doSpeak();
+  }
+}
+
+document.getElementById('speakBtn').addEventListener('click', () => {
+  const sc = SCENARIOS[state.scenarioIdx];
+  const turn = sc.turns[state.turnIdx];
+  speakText(turn.en, document.getElementById('speakBtn'));
+});
+
+document.getElementById('answerSpeakBtn').addEventListener('click', () => {
+  const sc = SCENARIOS[state.scenarioIdx];
+  const turn = sc.turns[state.turnIdx];
+  speakText(turn.options[turn.correct], document.getElementById('answerSpeakBtn'));
+});
+
+/* ---------- 発音練習(音声認識) ---------- */
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+const micBtn = document.getElementById('micBtn');
+const practiceResult = document.getElementById('practiceResult');
+let recognition = null;
+let isListening = false;
+
+if(!SpeechRecognitionAPI){
+  micBtn.classList.add('unsupported');
+  micBtn.textContent = '🎤 この端末では音声認識が使えません';
+} else {
+  recognition = new SpeechRecognitionAPI();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = (e) => {
+    const heard = e.results[0][0].transcript;
+    const sc = SCENARIOS[state.scenarioIdx];
+    const turn = sc.turns[state.turnIdx];
+    const target = turn.options[turn.correct];
+    showPracticeResult(heard, target);
+  };
+  recognition.onerror = (e) => {
+    practiceResult.classList.add('show');
+    practiceResult.className = 'practice-result show retry';
+    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+      practiceResult.textContent = 'マイクの使用が許可されていません。設定を確認してください。';
+    } else if(e.error === 'no-speech'){
+      practiceResult.textContent = '声が聞き取れませんでした。もう一度お試しください。';
+    } else {
+      practiceResult.textContent = '音声認識でエラーが発生しました。もう一度お試しください。';
+    }
+  };
+  recognition.onend = () => {
+    isListening = false;
+    micBtn.classList.remove('listening');
+    micBtn.textContent = '🎤 発音を練習する';
+  };
+
+  micBtn.addEventListener('click', () => {
+    if(isListening){
+      recognition.stop();
+      return;
+    }
+    if('speechSynthesis' in window) window.speechSynthesis.cancel();
+    isListening = true;
+    micBtn.classList.add('listening');
+    micBtn.textContent = '🎙️ 聞き取り中... (タップで停止)';
+    practiceResult.classList.remove('show');
+    try{
+      recognition.start();
+    }catch(err){
+      isListening = false;
+      micBtn.classList.remove('listening');
+      micBtn.textContent = '🎤 発音を練習する';
+    }
+  });
+}
+
+function normalizeWords(text){
+  return text.toLowerCase().replace(/[.,!?']/g, '').split(/\s+/).filter(Boolean);
+}
+
+function showPracticeResult(heard, target){
+  const heardWords = normalizeWords(heard);
+  const targetWords = normalizeWords(target);
+  const heardSet = new Set(heardWords);
+  let matched = 0;
+  targetWords.forEach(w => { if(heardSet.has(w)) matched++; });
+  const score = targetWords.length ? matched / targetWords.length : 0;
+
+  practiceResult.classList.add('show');
+  let cls, msg;
+  if(score >= 0.8){ cls='great'; msg='🎉 バッチリです!とても近い発音でした。'; }
+  else if(score >= 0.5){ cls='okay'; msg='👍 惜しい!もう一度聞いて練習してみましょう。'; }
+  else { cls='retry'; msg='もう一度、正解の発音を聞いてから挑戦してみましょう。'; }
+  practiceResult.className = 'practice-result show ' + cls;
+  practiceResult.innerHTML = msg + `<span class="heard">認識結果: "${heard}"</span>`;
+}
+
+function resetPracticeBox(){
+  practiceResult.classList.remove('show');
+  practiceResult.textContent = '';
+  if(isListening && recognition){ recognition.stop(); }
+  if(SpeechRecognitionAPI){
+    micBtn.classList.remove('listening');
+    micBtn.textContent = '🎤 発音を練習する';
+  }
+}
+
+function selectOption(i){
+  if(state.answered) return;
+  state.answered = true;
+  const sc = SCENARIOS[state.scenarioIdx];
+  const turn = sc.turns[state.turnIdx];
+  const options = document.querySelectorAll('.option');
+  const isCorrect = i === turn.correct;
+
+  options.forEach((btn, idx) => {
+    btn.disabled = true;
+    if(idx === turn.correct) btn.classList.add('correct');
+    else if(idx === i) btn.classList.add('incorrect');
+  });
+
+  const fb = document.getElementById('feedbackBox');
+  fb.classList.add('show', isCorrect ? 'ok' : 'ng');
+  document.getElementById('feedbackHead').textContent = isCorrect ? '✓ その通り!' : '✕ 惜しい!';
+  document.getElementById('feedbackExplain').textContent = turn.explain;
+
+  const seg = document.getElementById('seg-'+state.turnIdx);
+  seg.classList.remove('active');
+  seg.classList.add(isCorrect ? 'done' : 'wrong');
+  if(isCorrect) state.correctCount++;
+
+  document.getElementById('nextBtn').classList.add('show');
+}
+
+document.getElementById('nextBtn').addEventListener('click', () => {
+  const sc = SCENARIOS[state.scenarioIdx];
+  if(state.turnIdx < sc.turns.length - 1){
+    state.turnIdx++;
+    renderTurn();
+  } else {
+    finishScenario();
+  }
+});
+
+function finishScenario(){
+  const sc = SCENARIOS[state.scenarioIdx];
+  quizView.classList.add('hidden');
+  resultView.classList.remove('hidden');
+  const total = sc.turns.length;
+  const score = state.correctCount;
+  document.getElementById('resultScore').textContent = `${score} / ${total}`;
+  if(score === total){
+    state.clearedIds.add(sc.id);
+    document.getElementById('resultEmoji').textContent = '🎉';
+    document.getElementById('resultTitle').textContent = '完璧です!';
+    document.getElementById('resultMsg').textContent = 'すべての返答が自然でした。他の場面にも挑戦してみましょう。';
+  } else if(score >= total * 0.6){
+    document.getElementById('resultEmoji').textContent = '👍';
+    document.getElementById('resultTitle').textContent = 'よくできました';
+    document.getElementById('resultMsg').textContent = 'もう一度挑戦して、満点を目指してみましょう。';
+  } else {
+    document.getElementById('resultEmoji').textContent = '💪';
+    document.getElementById('resultTitle').textContent = 'もう一歩!';
+    document.getElementById('resultMsg').textContent = '日本語訳を確認しながら、もう一度会話を追ってみましょう。';
+  }
+}
+
+document.getElementById('retryBtn').addEventListener('click', () => startScenario(state.scenarioIdx));
+document.getElementById('toListBtn').addEventListener('click', backToList);
+document.getElementById('backBtn').addEventListener('click', backToList);
+
+function backToList(){
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  quizView.classList.add('hidden');
+  resultView.classList.add('hidden');
+  listView.classList.remove('hidden');
+  renderList();
+}
+
+renderList();
+</script>
+</body>
+</html>
