@@ -28,7 +28,7 @@
   html,body{height:100%;}
   body{
     margin:0;
-    min-height:100dvh;
+    height:100dvh;
     background:
       radial-gradient(ellipse at top left, #1B2934 0%, var(--bg) 55%),
       var(--bg);
@@ -37,16 +37,20 @@
     display:flex;
     flex-direction:column;
     overflow-x:hidden;
+    overflow-y:auto;
   }
+  /* 画面サイズに合わせた自動拡大縮小は JS(fitToScreen) が .app 全体に scale をかける */
   .app{
     width:100%;
     max-width:560px;
     margin:0 auto;
-    min-height:100dvh;
+    flex:none;
     display:flex;
     flex-direction:column;
     padding: clamp(12px,3vw,20px);
     padding-bottom: max(clamp(12px,3vw,20px), env(safe-area-inset-bottom));
+    transform-origin: top center;
+    box-sizing:border-box;
   }
 
   /* ---------- header ---------- */
@@ -914,6 +918,27 @@ function backToList(){
 }
 
 renderList();
+
+/* ---------- スマホの画面サイズに合わせた自動拡大縮小 ---------- */
+/* .app は常に内容どおりの自然な大きさで組み、画面に収まる倍率だけ scale で縮小する */
+const appEl = document.querySelector('.app');
+const MIN_FIT_SCALE = 0.5;
+
+function fitToScreen(){
+  const availW = window.innerWidth;
+  const availH = window.innerHeight;
+  const naturalW = appEl.offsetWidth;
+  const naturalH = appEl.offsetHeight;
+  if(!naturalW || !naturalH) return;
+  const scale = Math.min(availW / naturalW, availH / naturalH, 1);
+  appEl.style.transform = `scale(${Math.max(scale, MIN_FIT_SCALE)})`;
+}
+
+fitToScreen();
+window.addEventListener('load', fitToScreen);
+window.addEventListener('resize', fitToScreen);
+window.addEventListener('orientationchange', fitToScreen);
+new ResizeObserver(fitToScreen).observe(appEl);
 </script>
 </body>
 </html>
