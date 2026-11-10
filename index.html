@@ -767,15 +767,32 @@ if(!SpeechRecognitionAPI){
 } else {
   recognition = new SpeechRecognitionAPI();
   recognition.lang = 'en-US';
-  recognition.interimResults = false;
+  recognition.interimResults = true;
   recognition.maxAlternatives = 1;
 
+  let finalHeard = '';
+  let gotSpeech = false;
+
+  recognition.onspeechstart = () => {
+    gotSpeech = true;
+    micBtn.textContent = '🎙️ 聞こえています...';
+  };
+
   recognition.onresult = (e) => {
-    const heard = e.results[0][0].transcript;
-    const sc = SCENARIOS[state.scenarioIdx];
-    const turn = sc.turns[state.turnIdx];
-    const target = turn.options[turn.correct];
-    showPracticeResult(heard, target);
+    let interim = '';
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const transcript = e.results[i][0].transcript;
+      if(e.results[i].isFinal){
+        finalHeard = transcript;
+      } else {
+        interim = transcript;
+      }
+    }
+    if(interim && !finalHeard){
+      practiceResult.classList.add('show');
+      practiceResult.className = 'practice-result show';
+      practiceResult.innerHTML = `🎙️ 認識中… <span class="heard">"${interim}"</span>`;
+    }
   };
   recognition.onerror = (e) => {
     practiceResult.classList.add('show');
@@ -783,7 +800,7 @@ if(!SpeechRecognitionAPI){
     if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
       practiceResult.textContent = 'マイクの使用が許可されていません。設定を確認してください。';
     } else if(e.error === 'no-speech'){
-      practiceResult.textContent = '声が聞き取れませんでした。もう一度お試しください。';
+      practiceResult.textContent = '声が聞き取れませんでした。ボタンを押したらすぐに、はっきりと話しかけてみてください。';
     } else {
       practiceResult.textContent = '音声認識でエラーが発生しました。もう一度お試しください。';
     }
@@ -792,6 +809,16 @@ if(!SpeechRecognitionAPI){
     isListening = false;
     micBtn.classList.remove('listening');
     micBtn.textContent = '🎤 発音を練習する';
+    if(finalHeard){
+      const sc = SCENARIOS[state.scenarioIdx];
+      const turn = sc.turns[state.turnIdx];
+      const target = turn.options[turn.correct];
+      showPracticeResult(finalHeard, target);
+    } else if(!gotSpeech){
+      practiceResult.classList.add('show');
+      practiceResult.className = 'practice-result show retry';
+      practiceResult.textContent = '声が聞き取れませんでした。ボタンを押したらすぐに、はっきりと話しかけてみてください。';
+    }
   };
 
   micBtn.addEventListener('click', () => {
@@ -801,6 +828,8 @@ if(!SpeechRecognitionAPI){
     }
     if('speechSynthesis' in window) window.speechSynthesis.cancel();
     isListening = true;
+    finalHeard = '';
+    gotSpeech = false;
     micBtn.classList.add('listening');
     micBtn.textContent = '🎙️ 聞き取り中... (タップで停止)';
     practiceResult.classList.remove('show');
@@ -939,6 +968,43 @@ window.addEventListener('load', fitToScreen);
 window.addEventListener('resize', fitToScreen);
 window.addEventListener('orientationchange', fitToScreen);
 new ResizeObserver(fitToScreen).observe(appEl);
+
+/* ---------- ダブルタップでピンチズームをリセット ---------- */
+/* viewportのcontentを一瞬書き換えて戻すと、ブラウザが拡大率を1倍に再計算してくれる */
+(function(){
+  const viewportMeta = document.querySelector('meta[name="viewport"]');
+  const baseContent = viewportMeta.getAttribute('content');
+
+  function resetZoom(){
+    viewportMeta.setAttribute('content', baseContent + ', maximum-scale=1.0');
+    requestAnimationFrame(() => {
+      viewportMeta.setAttribute('content', baseContent);
+    });
+  }
+
+  const DOUBLE_TAP_MS = 300;
+  const DOUBLE_TAP_DIST = 30;
+  let lastTapTime = 0;
+  let lastTapX = 0;
+  let lastTapY = 0;
+
+  document.addEventListener('touchend', (e) => {
+    if(e.changedTouches.length !== 1) return;
+    const touch = e.changedTouches[0];
+    const now = Date.now();
+    const dist = Math.hypot(touch.clientX - lastTapX, touch.clientY - lastTapY);
+
+    if(now - lastTapTime < DOUBLE_TAP_MS && dist < DOUBLE_TAP_DIST){
+      e.preventDefault();
+      resetZoom();
+      lastTapTime = 0;
+    } else {
+      lastTapTime = now;
+      lastTapX = touch.clientX;
+      lastTapY = touch.clientY;
+    }
+  }, { passive:false });
+})();
 </script>
 </body>
 </html>
