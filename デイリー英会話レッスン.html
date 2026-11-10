@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>デイリー英会話</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -939,6 +939,43 @@ window.addEventListener('load', fitToScreen);
 window.addEventListener('resize', fitToScreen);
 window.addEventListener('orientationchange', fitToScreen);
 new ResizeObserver(fitToScreen).observe(appEl);
+
+/* ---------- ダブルタップでピンチズームをリセット ---------- */
+/* viewportのcontentを一瞬書き換えて戻すと、ブラウザが拡大率を1倍に再計算してくれる */
+(function(){
+  const viewportMeta = document.querySelector('meta[name="viewport"]');
+  const baseContent = viewportMeta.getAttribute('content');
+
+  function resetZoom(){
+    viewportMeta.setAttribute('content', baseContent + ', maximum-scale=1.0');
+    requestAnimationFrame(() => {
+      viewportMeta.setAttribute('content', baseContent);
+    });
+  }
+
+  const DOUBLE_TAP_MS = 300;
+  const DOUBLE_TAP_DIST = 30;
+  let lastTapTime = 0;
+  let lastTapX = 0;
+  let lastTapY = 0;
+
+  document.addEventListener('touchend', (e) => {
+    if(e.changedTouches.length !== 1) return;
+    const touch = e.changedTouches[0];
+    const now = Date.now();
+    const dist = Math.hypot(touch.clientX - lastTapX, touch.clientY - lastTapY);
+
+    if(now - lastTapTime < DOUBLE_TAP_MS && dist < DOUBLE_TAP_DIST){
+      e.preventDefault();
+      resetZoom();
+      lastTapTime = 0;
+    } else {
+      lastTapTime = now;
+      lastTapX = touch.clientX;
+      lastTapY = touch.clientY;
+    }
+  }, { passive:false });
+})();
 </script>
 </body>
 </html>
