@@ -773,6 +773,10 @@ if(!SpeechRecognitionAPI){
   let finalHeard = '';
   let gotSpeech = false;
   let cancelled = false;
+  let starting = false;
+  let startTimeoutId = null;
+  let lastEndAt = 0;
+  const RESTART_COOLDOWN_MS = 500; // 直前の認識終了直後は音声を拾えないブラウザがあるための間隔
 
   function createRecognition(){
     const r = new SpeechRecognitionAPI();
@@ -815,6 +819,7 @@ if(!SpeechRecognitionAPI){
     };
     r.onend = () => {
       isListening = false;
+      lastEndAt = Date.now();
       micBtn.classList.remove('listening');
       micBtn.textContent = '🎤 発音を練習する';
       if(cancelled){ cancelled = false; return; }
@@ -832,7 +837,9 @@ if(!SpeechRecognitionAPI){
     return r;
   }
 
-  function startListening(){
+  function doStart(){
+    startTimeoutId = null;
+    starting = false;
     if('speechSynthesis' in window) window.speechSynthesis.cancel();
     cancelled = false;
     finalHeard = '';
@@ -854,17 +861,38 @@ if(!SpeechRecognitionAPI){
     }
   }
 
+  function startListening(){
+    if(starting || isListening) return;
+    const wait = Math.max(0, RESTART_COOLDOWN_MS - (Date.now() - lastEndAt));
+    starting = true;
+    micBtn.classList.add('listening');
+    micBtn.textContent = wait > 0 ? '🎙️ 準備中...' : '🎙️ 聞き取り中... (タップで停止)';
+    if(wait > 0){
+      startTimeoutId = setTimeout(doStart, wait);
+    } else {
+      doStart();
+    }
+  }
+
+  function cancelStarting(){
+    if(startTimeoutId){ clearTimeout(startTimeoutId); startTimeoutId = null; }
+    starting = false;
+  }
+
   function stopListening(){
+    cancelStarting();
     cancelled = true;
     isListening = false;
     micBtn.classList.remove('listening');
     micBtn.textContent = '🎤 発音を練習する';
-    if(recognition) recognition.abort();
+    if(recognition){
+      try{ recognition.abort(); }catch(e){}
+    }
   }
   stopListeningFn = stopListening;
 
   micBtn.addEventListener('click', () => {
-    if(isListening){
+    if(isListening || starting){
       stopListening();
     } else {
       startListening();
