@@ -761,105 +761,117 @@ const practiceResult = document.getElementById('practiceResult');
 let recognition = null;
 let isListening = false;
 
+let stopListeningFn = null;
+
 if(!SpeechRecognitionAPI){
   micBtn.classList.add('unsupported');
   micBtn.textContent = '🎤 この端末では音声認識が使えません';
 } else {
-  // 認識のたびに新しいインスタンスを作る(使い回すとブラウザによって内部状態が
-  // 引きずられ、2回目以降 start() が効かなくなることがあるため)
-  function createRecognition(){
-    const r = new SpeechRecognitionAPI();
-    r.lang = 'en-US';
-    r.interimResults = true;
-    r.maxAlternatives = 1;
+  // マイクの許可ダイアログが何度も出ないよう、インスタンスは1つだけ作って使い回す
+  recognition = new SpeechRecognitionAPI();
+  recognition.lang = 'en-US';
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
 
-    let finalHeard = '';
-    let gotSpeech = false;
-    let cancelled = false;
-    r._cancel = () => { cancelled = true; };
+  let finalHeard = '';
+  let gotSpeech = false;
+  let cancelled = false;
 
-    r.onspeechstart = () => {
-      gotSpeech = true;
-      micBtn.textContent = '🎙️ 聞こえています...';
-    };
+  recognition.onspeechstart = () => {
+    gotSpeech = true;
+    micBtn.textContent = '🎙️ 聞こえています...';
+  };
 
-    r.onresult = (e) => {
-      let interim = '';
-      for(let i = e.resultIndex; i < e.results.length; i++){
-        const transcript = e.results[i][0].transcript;
-        if(e.results[i].isFinal){
-          finalHeard = transcript;
-        } else {
-          interim = transcript;
-        }
-      }
-      if(interim && !finalHeard){
-        practiceResult.classList.add('show');
-        practiceResult.className = 'practice-result show';
-        practiceResult.innerHTML = `🎙️ 認識中… <span class="heard">"${interim}"</span>`;
-      }
-    };
-    r.onerror = (e) => {
-      if(cancelled || e.error === 'aborted') return;
-      practiceResult.classList.add('show');
-      practiceResult.className = 'practice-result show retry';
-      if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
-        practiceResult.textContent = 'マイクの使用が許可されていません。設定を確認してください。';
-      } else if(e.error === 'no-speech'){
-        practiceResult.textContent = '声が聞き取れませんでした。ボタンを押したらすぐに、はっきりと話しかけてみてください。';
+  recognition.onresult = (e) => {
+    let interim = '';
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const transcript = e.results[i][0].transcript;
+      if(e.results[i].isFinal){
+        finalHeard = transcript;
       } else {
-        practiceResult.textContent = '音声認識でエラーが発生しました。もう一度お試しください。';
+        interim = transcript;
       }
-    };
-    r.onend = () => {
-      isListening = false;
-      micBtn.classList.remove('listening');
-      micBtn.textContent = '🎤 発音を練習する';
-      if(cancelled) return;
-      if(finalHeard){
-        const sc = SCENARIOS[state.scenarioIdx];
-        const turn = sc.turns[state.turnIdx];
-        const target = turn.options[turn.correct];
-        showPracticeResult(finalHeard, target);
-      } else if(!gotSpeech){
-        practiceResult.classList.add('show');
-        practiceResult.className = 'practice-result show retry';
-        practiceResult.textContent = '声が聞き取れませんでした。ボタンを押したらすぐに、はっきりと話しかけてみてください。';
-      }
-    };
-    return r;
-  }
-
-  function stopListening(){
+    }
+    if(interim && !finalHeard){
+      practiceResult.classList.add('show');
+      practiceResult.className = 'practice-result show';
+      practiceResult.innerHTML = `🎙️ 認識中… <span class="heard">"${interim}"</span>`;
+    }
+  };
+  recognition.onerror = (e) => {
+    if(cancelled || e.error === 'aborted') return;
+    practiceResult.classList.add('show');
+    practiceResult.className = 'practice-result show retry';
+    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+      practiceResult.textContent = 'マイクの使用が許可されていません。設定を確認してください。';
+    } else if(e.error === 'no-speech'){
+      practiceResult.textContent = '声が聞き取れませんでした。ボタンを押したらすぐに、はっきりと話しかけてみてください。';
+    } else {
+      practiceResult.textContent = '音声認識でエラーが発生しました。もう一度お試しください。';
+    }
+  };
+  recognition.onend = () => {
     isListening = false;
     micBtn.classList.remove('listening');
     micBtn.textContent = '🎤 発音を練習する';
-    if(recognition){
-      recognition._cancel();
-      recognition.abort();
+    if(cancelled){ cancelled = false; return; }
+    if(finalHeard){
+      const sc = SCENARIOS[state.scenarioIdx];
+      const turn = sc.turns[state.turnIdx];
+      const target = turn.options[turn.correct];
+      showPracticeResult(finalHeard, target);
+    } else if(!gotSpeech){
+      practiceResult.classList.add('show');
+      practiceResult.className = 'practice-result show retry';
+      practiceResult.textContent = '声が聞き取れませんでした。ボタンを押したらすぐに、はっきりと話しかけてみてください。';
+    }
+  };
+
+  function startListening(){
+    if('speechSynthesis' in window) window.speechSynthesis.cancel();
+    cancelled = false;
+    finalHeard = '';
+    gotSpeech = false;
+    practiceResult.classList.remove('show');
+    try{
+      recognition.start();
+      isListening = true;
+      micBtn.classList.add('listening');
+      micBtn.textContent = '🎙️ 聞き取り中... (タップで停止)';
+    }catch(err){
+      // 直前の認識がまだ終了処理中で start() が失敗することがあるため、少し待って再試行する
+      setTimeout(() => {
+        try{
+          recognition.start();
+          isListening = true;
+          micBtn.classList.add('listening');
+          micBtn.textContent = '🎙️ 聞き取り中... (タップで停止)';
+        }catch(err2){
+          isListening = false;
+          micBtn.classList.remove('listening');
+          micBtn.textContent = '🎤 発音を練習する';
+          practiceResult.classList.add('show');
+          practiceResult.className = 'practice-result show retry';
+          practiceResult.textContent = 'マイクを開始できませんでした。もう一度お試しください。';
+        }
+      }, 300);
     }
   }
+
+  function stopListening(){
+    cancelled = true;
+    isListening = false;
+    micBtn.classList.remove('listening');
+    micBtn.textContent = '🎤 発音を練習する';
+    recognition.abort();
+  }
+  stopListeningFn = stopListening;
 
   micBtn.addEventListener('click', () => {
     if(isListening){
       stopListening();
-      return;
-    }
-    if('speechSynthesis' in window) window.speechSynthesis.cancel();
-    recognition = createRecognition();
-    isListening = true;
-    micBtn.classList.add('listening');
-    micBtn.textContent = '🎙️ 聞き取り中... (タップで停止)';
-    practiceResult.classList.remove('show');
-    try{
-      recognition.start();
-    }catch(err){
-      isListening = false;
-      micBtn.classList.remove('listening');
-      micBtn.textContent = '🎤 発音を練習する';
-      practiceResult.classList.add('show');
-      practiceResult.className = 'practice-result show retry';
-      practiceResult.textContent = 'マイクを開始できませんでした。もう一度お試しください。';
+    } else {
+      startListening();
     }
   });
 }
@@ -888,9 +900,8 @@ function showPracticeResult(heard, target){
 function resetPracticeBox(){
   practiceResult.classList.remove('show');
   practiceResult.textContent = '';
-  if(isListening && recognition){
-    recognition._cancel();
-    recognition.abort();
+  if(isListening && stopListeningFn){
+    stopListeningFn();
   }
   isListening = false;
   if(SpeechRecognitionAPI){
